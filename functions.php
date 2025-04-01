@@ -25,9 +25,7 @@ add_action('wp_enqueue_scripts', 'child_theme_configurator_css', 10);
 
 add_action('wp_enqueue_scripts', 'enqueue_child_theme_styles');
 function enqueue_child_theme_styles() {
-    // Encolar el estilo del tema padre (si es necesario)
     wp_enqueue_style('parent-style', get_template_directory_uri() . '/style.css');
-    // Encolar el estilo del tema hijo
     wp_enqueue_style('child-style', get_stylesheet_uri(), array('parent-style'), wp_get_theme()->get('Version'));
 }
 
@@ -40,6 +38,8 @@ add_shortcode('swatchly_color_swatches', function($atts) {
 
     $attributes = $product->get_variation_attributes();
     $attribute_name = 'Color';
+    $featured_image_id = $product->get_image_id();
+    $featured_image_url = $featured_image_id ? wp_get_attachment_url($featured_image_id) : '';
     ob_start();
     if (isset($attributes[$attribute_name])) {
         $options = $attributes[$attribute_name];
@@ -108,7 +108,8 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                 var variations = <?php echo json_encode($product->get_available_variations()); ?>;
                 var $imageContainer = $('.e-loop-item-' + productId + ' .elementor-element-3ca9209');
                 var $colorInput = $('#attribute_<?php echo esc_attr($attribute_name); ?>_' + productId);
-                var originalImage = $imageContainer.css('background-image'); // Guardar imagen original
+                var featuredImage = '<?php echo esc_js($featured_image_url); ?>'; // Imagen destacada
+                var originalImage = featuredImage; // Usar featured image como base
                 var nonce = '<?php echo wp_create_nonce('add_to_checkout'); ?>';
 
                 function showNotification(message) {
@@ -150,64 +151,64 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                     });
                 }
 
-                if ($('body').hasClass('archive')) {
-                    // Evento hover: cambiar imagen al pasar el cursor
-                    $('.swatchly_color_swatches .swatchly_color_swatch').on('mouseenter', function() {
-                        var selectedColor = $(this).data('value');
-                        var selectedSize = $('#attribute_Size_' + productId).val() || '';
-                        var matchedVariation = null;
+                // Evento hover: cambiar imagen al pasar el cursor
+                $('.swatchly_color_swatches[data-product_id="' + productId + '"] .swatchly_color_swatch').on('mouseenter', function() {
+                    var selectedColor = $(this).data('value');
+                    var selectedSize = $('#attribute_Size_' + productId).val() || '';
+                    var matchedVariation = null;
 
-                        $.each(variations, function(index, variation) {
-                            if (variation.attributes.attribute_color === selectedColor && 
-                                (!selectedSize || variation.attributes.attribute_size === selectedSize)) {
-                                matchedVariation = variation;
-                                return false;
-                            }
-                        });
-
-                        if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
-                            $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                    $.each(variations, function(index, variation) {
+                        if (variation.attributes.attribute_color === selectedColor && 
+                            (!selectedSize || variation.attributes.attribute_size === selectedSize)) {
+                            matchedVariation = variation;
+                            return false;
                         }
                     });
 
-                    // Evento hover: restaurar imagen al salir
-                    $('.swatchly_color_swatches .swatchly_color_swatch').on('mouseleave', function() {
-                        $imageContainer.css('background-image', originalImage);
-                    });
+                    if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
+                        $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                    }
+                });
 
-                    // Evento click: mantener funcionalidad original
-                    $('.swatchly_color_swatches .swatchly_color_swatch').on('click', function(e) {
-                        e.preventDefault();
-                        var selectedColor = $(this).data('value');
-                        $('.swatchly_color_swatches .swatchly_color_swatch').removeClass('selected');
-                        $(this).addClass('selected');
-                        $colorInput.val(selectedColor);
+                // Evento hover: restaurar imagen destacada al salir
+                $('.swatchly_color_swatches[data-product_id="' + productId + '"] .swatchly_color_swatch').on('mouseleave', function() {
+                    if ($imageContainer.length && featuredImage) {
+                        $imageContainer.css('background-image', 'url(' + featuredImage + ')');
+                    }
+                });
 
-                        var selectedSize = $('#attribute_Size_' + productId).val();
-                        var matchedVariation = null;
+                // Evento click: mantener funcionalidad original
+                $('.swatchly_color_swatches[data-product_id="' + productId + '"] .swatchly_color_swatch').on('click', function(e) {
+                    e.preventDefault();
+                    var selectedColor = $(this).data('value');
+                    $('.swatchly_color_swatches[data-product_id="' + productId + '"] .swatchly_color_swatch').removeClass('selected');
+                    $(this).addClass('selected');
+                    $colorInput.val(selectedColor);
 
-                        $.each(variations, function(index, variation) {
-                            if (variation.attributes.attribute_color === selectedColor && 
-                                variation.attributes.attribute_size === selectedSize) {
-                                matchedVariation = variation;
-                                return false;
-                            }
-                        });
+                    var selectedSize = $('#attribute_Size_' + productId).val();
+                    var matchedVariation = null;
 
-                        if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
-                            $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
-                            originalImage = $imageContainer.css('background-image'); // Actualizar imagen original
-                        }
-
-                        if (selectedSize && matchedVariation) {
-                            var attributes = {
-                                attribute_color: selectedColor,
-                                attribute_size: selectedSize
-                            };
-                            addToCart(productId, matchedVariation.variation_id, attributes);
+                    $.each(variations, function(index, variation) {
+                        if (variation.attributes.attribute_color === selectedColor && 
+                            variation.attributes.attribute_size === selectedSize) {
+                            matchedVariation = variation;
+                            return false;
                         }
                     });
-                }
+
+                    if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
+                        $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                        originalImage = $imageContainer.css('background-image'); // Actualizar tras click
+                    }
+
+                    if (selectedSize && matchedVariation) {
+                        var attributes = {
+                            attribute_color: selectedColor,
+                            attribute_size: selectedSize
+                        };
+                        addToCart(productId, matchedVariation.variation_id, attributes);
+                    }
+                });
             });
         </script>
         <?php
@@ -225,6 +226,8 @@ add_shortcode('swatchly_size_swatches', function($atts) {
 
     $attributes = $product->get_variation_attributes();
     $attribute_name = 'Size';
+    $featured_image_id = $product->get_image_id();
+    $featured_image_url = $featured_image_id ? wp_get_attachment_url($featured_image_id) : '';
     ob_start();
     if (isset($attributes[$attribute_name])) {
         $options = $attributes[$attribute_name];
@@ -255,10 +258,12 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                text-align: center;
                 font-size: 14px;
                 font-weight: bold;
                 background-color: #fff;
                 transition: border-color 0.3s, background-color 0.3s;
+                line-height: 1;
             }
             .swatchly_size_swatch.selected {
                 border-color: #000;
@@ -290,7 +295,8 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                 var variations = <?php echo json_encode($product->get_available_variations()); ?>;
                 var $imageContainer = $('.e-loop-item-' + productId + ' .elementor-element-3ca9209');
                 var $sizeInput = $('#attribute_<?php echo esc_attr($attribute_name); ?>_' + productId);
-                var originalImage = $imageContainer.css('background-image'); // Guardar imagen original
+                var featuredImage = '<?php echo esc_js($featured_image_url); ?>'; // Imagen destacada
+                var originalImage = featuredImage; // Usar featured image como base
                 var nonce = '<?php echo wp_create_nonce('add_to_checkout'); ?>';
 
                 function showNotification(message) {
@@ -332,64 +338,64 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                     });
                 }
 
-                if ($('body').hasClass('archive')) {
-                    // Evento hover: cambiar imagen al pasar el cursor
-                    $('.swatchly_size_swatches .swatchly_size_swatch').on('mouseenter', function() {
-                        var selectedSize = $(this).data('value');
-                        var selectedColor = $('#attribute_Color_' + productId).val() || '';
-                        var matchedVariation = null;
+                // Evento hover: cambiar imagen al pasar el cursor
+                $('.swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch').on('mouseenter', function() {
+                    var selectedSize = $(this).data('value');
+                    var selectedColor = $('#attribute_Color_' + productId).val() || '';
+                    var matchedVariation = null;
 
-                        $.each(variations, function(index, variation) {
-                            if (variation.attributes.attribute_size === selectedSize && 
-                                (!selectedColor || variation.attributes.attribute_color === selectedColor)) {
-                                matchedVariation = variation;
-                                return false;
-                            }
-                        });
-
-                        if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
-                            $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                    $.each(variations, function(index, variation) {
+                        if (variation.attributes.attribute_size === selectedSize && 
+                            (!selectedColor || variation.attributes.attribute_color === selectedColor)) {
+                            matchedVariation = variation;
+                            return false;
                         }
                     });
 
-                    // Evento hover: restaurar imagen al salir
-                    $('.swatchly_size_swatches .swatchly_size_swatch').on('mouseleave', function() {
-                        $imageContainer.css('background-image', originalImage);
-                    });
+                    if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
+                        $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                    }
+                });
 
-                    // Evento click: mantener funcionalidad original
-                    $('.swatchly_size_swatches .swatchly_size_swatch').on('click', function(e) {
-                        e.preventDefault();
-                        var selectedSize = $(this).data('value');
-                        $('.swatchly_size_swatches .swatchly_size_swatch').removeClass('selected');
-                        $(this).addClass('selected');
-                        $sizeInput.val(selectedSize);
+                // Evento hover: restaurar imagen destacada al salir
+                $('.swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch').on('mouseleave', function() {
+                    if ($imageContainer.length && featuredImage) {
+                        $imageContainer.css('background-image', 'url(' + featuredImage + ')');
+                    }
+                });
 
-                        var selectedColor = $('#attribute_Color_' + productId).val();
-                        var matchedVariation = null;
+                // Evento click: mantener funcionalidad original
+                $('.swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch').on('click', function(e) {
+                    e.preventDefault();
+                    var selectedSize = $(this).data('value');
+                    $('.swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch').removeClass('selected');
+                    $(this).addClass('selected');
+                    $sizeInput.val(selectedSize);
 
-                        $.each(variations, function(index, variation) {
-                            if (variation.attributes.attribute_size === selectedSize && 
-                                variation.attributes.attribute_color === selectedColor) {
-                                matchedVariation = variation;
-                                return false;
-                            }
-                        });
+                    var selectedColor = $('#attribute_Color_' + productId).val();
+                    var matchedVariation = null;
 
-                        if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
-                            $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
-                            originalImage = $imageContainer.css('background-image'); // Actualizar imagen original
-                        }
-
-                        if (selectedColor && matchedVariation) {
-                            var attributes = {
-                                attribute_color: selectedColor,
-                                attribute_size: selectedSize
-                            };
-                            addToCart(productId, matchedVariation.variation_id, attributes);
+                    $.each(variations, function(index, variation) {
+                        if (variation.attributes.attribute_size === selectedSize && 
+                            variation.attributes.attribute_color === selectedColor) {
+                            matchedVariation = variation;
+                            return false;
                         }
                     });
-                }
+
+                    if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
+                        $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                        originalImage = $imageContainer.css('background-image');
+                    }
+
+                    if (selectedColor && matchedVariation) {
+                        var attributes = {
+                            attribute_color: selectedColor,
+                            attribute_size: selectedSize
+                        };
+                        addToCart(productId, matchedVariation.variation_id, attributes);
+                    }
+                });
             });
         </script>
         <?php
