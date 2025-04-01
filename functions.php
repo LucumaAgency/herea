@@ -1,25 +1,25 @@
 <?php
 // Exit if accessed directly
-if ( !defined( 'ABSPATH' ) ) exit;
+if (!defined('ABSPATH')) exit;
 
 // BEGIN ENQUEUE PARENT ACTION
 // AUTO GENERATED - Do not modify or remove comment markers above or below:
 
-if ( !function_exists( 'chld_thm_cfg_locale_css' ) ):
-    function chld_thm_cfg_locale_css( $uri ){
-        if ( empty( $uri ) && is_rtl() && file_exists( get_template_directory() . '/rtl.css' ) )
+if (!function_exists('chld_thm_cfg_locale_css')):
+    function chld_thm_cfg_locale_css($uri) {
+        if (empty($uri) && is_rtl() && file_exists(get_template_directory() . '/rtl.css'))
             $uri = get_template_directory_uri() . '/rtl.css';
         return $uri;
     }
 endif;
-add_filter( 'locale_stylesheet_uri', 'chld_thm_cfg_locale_css' );
-         
-if ( !function_exists( 'child_theme_configurator_css' ) ):
+add_filter('locale_stylesheet_uri', 'chld_thm_cfg_locale_css');
+
+if (!function_exists('child_theme_configurator_css')):
     function child_theme_configurator_css() {
-        wp_enqueue_style( 'chld_thm_cfg_child', trailingslashit( get_stylesheet_directory_uri() ) . 'style.css', array( 'hello-elementor','hello-elementor','hello-elementor-theme-style','hello-elementor-header-footer' ) );
+        wp_enqueue_style('chld_thm_cfg_child', trailingslashit(get_stylesheet_directory_uri()) . 'style.css', array('hello-elementor', 'hello-elementor-theme-style', 'hello-elementor-header-footer'));
     }
 endif;
-add_action( 'wp_enqueue_scripts', 'child_theme_configurator_css', 10 );
+add_action('wp_enqueue_scripts', 'child_theme_configurator_css', 10);
 
 // END ENQUEUE PARENT ACTION
 
@@ -27,11 +27,9 @@ add_action('wp_enqueue_scripts', 'enqueue_child_theme_styles');
 function enqueue_child_theme_styles() {
     // Encolar el estilo del tema padre (si es necesario)
     wp_enqueue_style('parent-style', get_template_directory_uri() . '/style.css');
-
     // Encolar el estilo del tema hijo
     wp_enqueue_style('child-style', get_stylesheet_uri(), array('parent-style'), wp_get_theme()->get('Version'));
 }
-
 
 // FUNCTIONS
 add_shortcode('swatchly_color_swatches', function($atts) {
@@ -110,6 +108,7 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                 var variations = <?php echo json_encode($product->get_available_variations()); ?>;
                 var $imageContainer = $('.e-loop-item-' + productId + ' .elementor-element-3ca9209');
                 var $colorInput = $('#attribute_<?php echo esc_attr($attribute_name); ?>_' + productId);
+                var originalImage = $imageContainer.css('background-image'); // Guardar imagen original
                 var nonce = '<?php echo wp_create_nonce('add_to_checkout'); ?>';
 
                 function showNotification(message) {
@@ -152,6 +151,31 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                 }
 
                 if ($('body').hasClass('archive')) {
+                    // Evento hover: cambiar imagen al pasar el cursor
+                    $('.swatchly_color_swatches .swatchly_color_swatch').on('mouseenter', function() {
+                        var selectedColor = $(this).data('value');
+                        var selectedSize = $('#attribute_Size_' + productId).val() || '';
+                        var matchedVariation = null;
+
+                        $.each(variations, function(index, variation) {
+                            if (variation.attributes.attribute_color === selectedColor && 
+                                (!selectedSize || variation.attributes.attribute_size === selectedSize)) {
+                                matchedVariation = variation;
+                                return false;
+                            }
+                        });
+
+                        if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
+                            $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                        }
+                    });
+
+                    // Evento hover: restaurar imagen al salir
+                    $('.swatchly_color_swatches .swatchly_color_swatch').on('mouseleave', function() {
+                        $imageContainer.css('background-image', originalImage);
+                    });
+
+                    // Evento click: mantener funcionalidad original
                     $('.swatchly_color_swatches .swatchly_color_swatch').on('click', function(e) {
                         e.preventDefault();
                         var selectedColor = $(this).data('value');
@@ -172,6 +196,7 @@ add_shortcode('swatchly_color_swatches', function($atts) {
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                            originalImage = $imageContainer.css('background-image'); // Actualizar imagen original
                         }
 
                         if (selectedSize && matchedVariation) {
@@ -265,6 +290,7 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                 var variations = <?php echo json_encode($product->get_available_variations()); ?>;
                 var $imageContainer = $('.e-loop-item-' + productId + ' .elementor-element-3ca9209');
                 var $sizeInput = $('#attribute_<?php echo esc_attr($attribute_name); ?>_' + productId);
+                var originalImage = $imageContainer.css('background-image'); // Guardar imagen original
                 var nonce = '<?php echo wp_create_nonce('add_to_checkout'); ?>';
 
                 function showNotification(message) {
@@ -307,6 +333,31 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                 }
 
                 if ($('body').hasClass('archive')) {
+                    // Evento hover: cambiar imagen al pasar el cursor
+                    $('.swatchly_size_swatches .swatchly_size_swatch').on('mouseenter', function() {
+                        var selectedSize = $(this).data('value');
+                        var selectedColor = $('#attribute_Color_' + productId).val() || '';
+                        var matchedVariation = null;
+
+                        $.each(variations, function(index, variation) {
+                            if (variation.attributes.attribute_size === selectedSize && 
+                                (!selectedColor || variation.attributes.attribute_color === selectedColor)) {
+                                matchedVariation = variation;
+                                return false;
+                            }
+                        });
+
+                        if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
+                            $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                        }
+                    });
+
+                    // Evento hover: restaurar imagen al salir
+                    $('.swatchly_size_swatches .swatchly_size_swatch').on('mouseleave', function() {
+                        $imageContainer.css('background-image', originalImage);
+                    });
+
+                    // Evento click: mantener funcionalidad original
                     $('.swatchly_size_swatches .swatchly_size_swatch').on('click', function(e) {
                         e.preventDefault();
                         var selectedSize = $(this).data('value');
@@ -327,6 +378,7 @@ add_shortcode('swatchly_size_swatches', function($atts) {
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             $imageContainer.css('background-image', 'url(' + matchedVariation.image.src + ')');
+                            originalImage = $imageContainer.css('background-image'); // Actualizar imagen original
                         }
 
                         if (selectedColor && matchedVariation) {
