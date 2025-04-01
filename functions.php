@@ -89,10 +89,11 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                 position: fixed;
                 top: 20px;
                 right: 20px;
-                background-color: #28a745;
-                color: white;
+                background-color: #ffffff!important; /* Fondo blanco */
+                color: #000000!important; /* Texto negro para contraste */
                 padding: 10px 20px;
                 border-radius: 5px;
+                border: 1px solid #808080!important; /* Borde plomo */
                 box-shadow: 0 2px 5px rgba(0,0,0,0.2);
                 z-index: 9999;
                 opacity: 0;
@@ -142,7 +143,7 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                                     });
                                     $(document.body).trigger('wc_fragments_refreshed');
                                 }
-                                showNotification('Producto añadido al carrito');
+                                showNotification('Product added to cart');
                             }
                         },
                         error: function(xhr, status, error) {
