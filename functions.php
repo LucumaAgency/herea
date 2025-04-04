@@ -495,3 +495,15 @@ add_action('wp_enqueue_scripts', function() {
         swatchly_scripts();
     }
 });
+
+// LIMITAR PRODUCTOS ARCHIVE A 16
+
+add_action( 'woocommerce_product_query', 'change_posts_per_page', 999 );
+function change_posts_per_page( $query ) {
+
+    if( is_admin() )
+        return;
+
+    $query->set( 'posts_per_page', 16);
+    
+}
