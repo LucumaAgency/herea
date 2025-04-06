@@ -3,8 +3,6 @@
 if (!defined('ABSPATH')) exit;
 
 // BEGIN ENQUEUE PARENT ACTION
-// AUTO GENERATED - Do not modify or remove comment markers above or below:
-
 if (!function_exists('chld_thm_cfg_locale_css')):
     function chld_thm_cfg_locale_css($uri) {
         if (empty($uri) && is_rtl() && file_exists(get_template_directory() . '/rtl.css'))
@@ -32,7 +30,7 @@ function enqueue_child_theme_styles() {
 // FUNCTIONS
 add_shortcode('swatchly_color_swatches', function($atts) {
     $atts = shortcode_atts(array(
-        'product_id' => get_the_ID(), // Por defecto, usa el ID del producto actual
+        'product_id' => get_the_ID(),
     ), $atts);
 
     $product = wc_get_product($atts['product_id']);
@@ -59,7 +57,8 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                     'Green' => '#6B8854',
                     'Gold' => '#C89947',
                     'Silver' => '#D1D3D2',
-                    'Beige' => '#F5F5DC'
+                    'Beige' => '#F5F5DC',
+                    'Brown' => '#7E4124' // Añadido Brown
                 ];
                 $color_value = isset($color_map[$option]) ? $color_map[$option] : '#000000';
             ?>
@@ -162,7 +161,6 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                             }
                         },
                         error: function(xhr, status, error) {
-                            console.log('Error al añadir al carrito:', error);
                         }
                     });
                 }
@@ -170,28 +168,22 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                 $('.swatchly_color_swatches').each(function() {
                     var $swatchesContainer = $(this);
                     var productId = $swatchesContainer.data('product_id');
-                    var variations = JSON.parse($swatchesContainer.attr('data-variations'));
+                    var variations = JSON.parse($swatchesContainer.attr('data-variations') || '[]');
                     var $imageElement = $swatchesContainer.closest('.e-con-inner').find('.elementor-element-0515b16 img');
                     var $colorInput = $('#attribute_Color_' + productId);
                     var featuredImage = '<?php echo esc_js($featured_image_url); ?>';
                     var currentImage = featuredImage;
 
-                    console.log('Product ID:', productId, 'Image element found:', $imageElement.length > 0 ? 'Yes' : 'No');
-                    console.log('Variations for product', productId, ':', variations);
-
                     $swatchesContainer.find('.swatchly_color_swatch').on('mouseenter', function() {
-                        var selectedColor = $(this).data('value');
-                        var selectedSize = $('#attribute_Size_' + productId).val() || '';
+                        var selectedColor = String($(this).data('value') || '');
+                        var selectedSize = String($('#attribute_Size_' + productId).val() || '');
                         var matchedVariation = null;
 
-                        console.log('Hover on color:', selectedColor, 'Product ID:', productId);
-
                         $.each(variations, function(index, variation) {
-                            var sizeAttr = variation.attributes['attribute_pa_size'] || variation.attributes['attribute_size'];
-                            var colorAttr = variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'];
+                            var sizeAttr = String(variation.attributes['attribute_pa_size'] || variation.attributes['attribute_size'] || '');
+                            var colorAttr = String(variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'] || '');
 
-                            if (colorAttr === selectedColor && 
-                                (!selectedSize || sizeAttr === selectedSize)) {
+                            if (colorAttr === selectedColor && (!selectedSize || sizeAttr === selectedSize)) {
                                 matchedVariation = variation;
                                 return false;
                             }
@@ -201,34 +193,29 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                             currentImage = matchedVariation.image.src;
                             $imageElement.attr('src', currentImage);
                             $imageElement.attr('srcset', '');
-                            console.log('Image updated to:', currentImage, 'Product ID:', productId);
-                        } else {
-                            console.log('No matching variation found for color:', selectedColor, 'Product ID:', productId);
                         }
                     });
 
                     $swatchesContainer.on('mouseleave', function() {
                         $imageElement.attr('src', currentImage);
                         $imageElement.attr('srcset', '');
-                        console.log('Mouse left, image persists:', currentImage, 'Product ID:', productId);
                     });
 
                     $swatchesContainer.find('.swatchly_color_swatch').on('click', function(e) {
                         e.preventDefault();
-                        var selectedColor = $(this).data('value');
+                        var selectedColor = String($(this).data('value') || '');
                         $swatchesContainer.find('.swatchly_color_swatch').removeClass('selected');
                         $(this).addClass('selected');
                         $colorInput.val(selectedColor);
 
-                        var selectedSize = $('#attribute_Size_' + productId).val();
+                        var selectedSize = String($('#attribute_Size_' + productId).val() || '');
                         var matchedVariation = null;
 
                         $.each(variations, function(index, variation) {
-                            var sizeAttr = variation.attributes['attribute_pa_size'] || variation.attributes['attribute_size'];
-                            var colorAttr = variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'];
+                            var sizeAttr = String(variation.attributes['attribute_pa_size'] || variation.attributes['attribute_size'] || '');
+                            var colorAttr = String(variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'] || '');
 
-                            if (colorAttr === selectedColor && 
-                                sizeAttr === selectedSize) {
+                            if (colorAttr === selectedColor && sizeAttr === selectedSize) {
                                 matchedVariation = variation;
                                 return false;
                             }
@@ -369,7 +356,6 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                             }
                         },
                         error: function(xhr, status, error) {
-                            console.log('Error al añadir al carrito:', error);
                         }
                     });
                 }
@@ -379,16 +365,22 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                     $colorSwatches.removeClass('out-of-stock');
 
                     $colorSwatches.each(function() {
-                        var colorValue = $(this).data('value');
+                        var colorValue = String($(this).data('value') || '');
                         var isAvailable = false;
 
                         $.each(variations, function(index, variation) {
-                            var sizeAttr = variation.attributes['attribute_pa_size'] || variation.attributes['attribute_size'];
-                            var colorAttr = variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'];
+                            var sizeAttr = '';
+                            var colorAttr = '';
+                            for (var attr in variation.attributes) {
+                                if (attr.toLowerCase().includes('size')) {
+                                    sizeAttr = String(variation.attributes[attr] || '');
+                                }
+                                if (attr.toLowerCase().includes('color')) {
+                                    colorAttr = String(variation.attributes[attr] || '');
+                                }
+                            }
 
-                            if (sizeAttr === selectedSize && 
-                                colorAttr === colorValue && 
-                                variation.is_in_stock) {
+                            if (sizeAttr === selectedSize && colorAttr === colorValue && variation.is_in_stock) {
                                 isAvailable = true;
                                 return false;
                             }
@@ -403,65 +395,84 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                 $('.swatchly_size_swatches').each(function() {
                     var $swatchesContainer = $(this);
                     var productId = $swatchesContainer.data('product_id');
-                    var variations = JSON.parse($swatchesContainer.attr('data-variations'));
+                    var variations = JSON.parse($swatchesContainer.attr('data-variations') || '[]');
                     var $imageElement = $swatchesContainer.closest('.e-con-inner').find('.elementor-element-0515b16 img');
                     var $sizeInput = $('#attribute_Size_' + productId);
                     var featuredImage = '<?php echo esc_js($featured_image_url); ?>';
                     var currentImage = featuredImage;
 
-                    console.log('Product ID:', productId, 'Image element found:', $imageElement.length > 0 ? 'Yes' : 'No');
-                    console.log('Variations for product', productId, ':', variations);
-
                     $swatchesContainer.find('.swatchly_size_swatch').on('mouseenter', function() {
-                        var selectedSize = $(this).data('value');
-                        var selectedColor = $('#attribute_Color_' + productId).val() || '';
+                        var selectedSize = String($(this).data('value') || '');
+                        var selectedColor = String($('#attribute_Color_' + productId).val() || '');
                         var matchedVariation = null;
+                        var stockByColor = {};
 
-                        console.log('Hover on size:', selectedSize, 'Product ID:', productId);
+                        if (!variations || variations.length === 0) {
+                            return;
+                        }
 
                         $.each(variations, function(index, variation) {
-                            var sizeAttr = variation.attributes['attribute_pa_size'] || variation.attributes['attribute_size'];
-                            var colorAttr = variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'];
+                            var sizeAttr = '';
+                            var colorAttr = '';
+                            for (var attr in variation.attributes) {
+                                if (attr.toLowerCase().includes('size')) {
+                                    sizeAttr = String(variation.attributes[attr] || '');
+                                }
+                                if (attr.toLowerCase().includes('color')) {
+                                    colorAttr = String(variation.attributes[attr] || '');
+                                }
+                            }
 
-                            if (sizeAttr === selectedSize && 
-                                (!selectedColor || colorAttr === selectedColor)) {
+                            if (sizeAttr === selectedSize) {
+                                stockByColor[colorAttr] = {
+                                    stock: variation.is_in_stock ? (variation.stock_quantity !== null && variation.stock_quantity !== undefined ? variation.stock_quantity : 'In Stock') : 'Out of Stock',
+                                    variation_id: variation.variation_id,
+                                    is_in_stock: variation.is_in_stock,
+                                    manage_stock: variation.manage_stock
+                                };
+                            }
+
+                            if (sizeAttr === selectedSize && (!selectedColor || colorAttr === selectedColor)) {
                                 matchedVariation = variation;
-                                return false;
                             }
                         });
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             currentImage = matchedVariation.image.src;
                             $imageElement.attr('src', currentImage);
-                            console.log('Image updated to:', currentImage, 'Product ID:', productId);
-                        } else {
-                            console.log('No matching variation found for size:', selectedSize, 'Product ID:', productId);
                         }
                     });
 
                     $swatchesContainer.on('mouseleave', function() {
                         $imageElement.attr('src', currentImage);
-                        console.log('Mouse left, image persists:', currentImage, 'Product ID:', productId);
                     });
 
                     $swatchesContainer.find('.swatchly_size_swatch').on('click', function(e) {
                         e.preventDefault();
-                        var selectedSize = $(this).data('value');
+                        var selectedSize = String($(this).data('value') || '');
                         $swatchesContainer.find('.swatchly_size_swatch').removeClass('selected');
                         $(this).addClass('selected');
                         $sizeInput.val(selectedSize);
 
-                        var selectedColor = $('#attribute_Color_' + productId).val();
+                        var selectedColor = String($('#attribute_Color_' + productId).val() || '');
                         var matchedVariation = null;
 
+                        // Actualizar los swatches de color según el tamaño seleccionado
                         updateColorSwatches(productId, selectedSize, variations);
 
                         $.each(variations, function(index, variation) {
-                            var sizeAttr = variation.attributes['attribute_pa_size'] || variation.attributes['attribute_size'];
-                            var colorAttr = variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'];
+                            var sizeAttr = '';
+                            var colorAttr = '';
+                            for (var attr in variation.attributes) {
+                                if (attr.toLowerCase().includes('size')) {
+                                    sizeAttr = String(variation.attributes[attr] || '');
+                                }
+                                if (attr.toLowerCase().includes('color')) {
+                                    colorAttr = String(variation.attributes[attr] || '');
+                                }
+                            }
 
-                            if (sizeAttr === selectedSize && 
-                                colorAttr === selectedColor) {
+                            if (sizeAttr === selectedSize && colorAttr === selectedColor) {
                                 matchedVariation = variation;
                                 return false;
                             }
@@ -497,13 +508,9 @@ add_action('wp_enqueue_scripts', function() {
 });
 
 // LIMITAR PRODUCTOS ARCHIVE A 16
-
-add_action( 'woocommerce_product_query', 'change_posts_per_page', 999 );
-function change_posts_per_page( $query ) {
-
-    if( is_admin() )
+add_action('woocommerce_product_query', 'change_posts_per_page', 999);
+function change_posts_per_page($query) {
+    if (is_admin())
         return;
-
-    $query->set( 'posts_per_page', 16);
-    
+    $query->set('posts_per_page', 16);
 }
