@@ -58,7 +58,7 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                     'Gold' => '#C89947',
                     'Silver' => '#D1D3D2',
                     'Beige' => '#F5F5DC',
-                    'Brown' => '#7E4124' // Añadido Brown
+                    'Brown' => '#7E4124'
                 ];
                 $color_value = isset($color_map[$option]) ? $color_map[$option] : '#000000';
             ?>
@@ -165,6 +165,38 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                     });
                 }
 
+                function updateSizeSwatches(productId, selectedColor, variations) {
+                    var $sizeSwatches = $('.swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch');
+                    $sizeSwatches.removeClass('out-of-stock');
+
+                    $sizeSwatches.each(function() {
+                        var sizeValue = String($(this).data('value') || '');
+                        var isAvailable = false;
+
+                        $.each(variations, function(index, variation) {
+                            var sizeAttr = '';
+                            var colorAttr = '';
+                            for (var attr in variation.attributes) {
+                                if (attr.toLowerCase().includes('size')) {
+                                    sizeAttr = String(variation.attributes[attr] || '');
+                                }
+                                if (attr.toLowerCase().includes('color')) {
+                                    colorAttr = String(variation.attributes[attr] || '');
+                                }
+                            }
+
+                            if (colorAttr === selectedColor && sizeAttr === sizeValue && variation.is_in_stock) {
+                                isAvailable = true;
+                                return false;
+                            }
+                        });
+
+                        if (!isAvailable) {
+                            $(this).addClass('out-of-stock');
+                        }
+                    });
+                }
+
                 $('.swatchly_color_swatches').each(function() {
                     var $swatchesContainer = $(this);
                     var productId = $swatchesContainer.data('product_id');
@@ -207,6 +239,9 @@ add_shortcode('swatchly_color_swatches', function($atts) {
                         $swatchesContainer.find('.swatchly_color_swatch').removeClass('selected');
                         $(this).addClass('selected');
                         $colorInput.val(selectedColor);
+
+                        // Update size swatches based on selected color
+                        updateSizeSwatches(productId, selectedColor, variations);
 
                         var selectedSize = String($('#attribute_Size_' + productId).val() || '');
                         var matchedVariation = null;
@@ -295,6 +330,7 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                 background-color: #fff;
                 transition: border-color 0.3s, background-color 0.3s;
                 line-height: 1;
+                position: relative;
             }
             .swatchly_size_swatch.selected {
                 border-color: #000;
@@ -302,6 +338,22 @@ add_shortcode('swatchly_size_swatches', function($atts) {
             }
             .swatchly_size_swatch:hover {
                 border-color: #666;
+            }
+            .swatchly_size_swatch.out-of-stock {
+                position: relative;
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .swatchly_size_swatch.out-of-stock::after {
+                content: 'X';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 18px;
+                color: #fff;
+                font-weight: bold;
+                text-shadow: 0 0 2px #000;
             }
             .cart-notification {
                 position: fixed;
