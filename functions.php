@@ -47,20 +47,16 @@ add_shortcode('swatchly_color_swatches', function($atts) {
         $options = $attributes[$attribute_name];
         ?>
         <div class="variations swatchly_variation_wrap swatchly_color_swatches" data-product_id="<?php echo esc_attr($atts['product_id']); ?>" data-variations='<?php echo esc_attr(json_encode($product->get_available_variations())); ?>'>
-            <?php foreach ($options as $option) : 
-                $color_map = [
-                    'Red' => '#C40028',
-                    'Pink' => '#FFC1CC',
-                    'Blue' => '#0000FF',
-                    'Black' => '#000000',
-                    'White' => '#FFFFFF',
-                    'Green' => '#6B8854',
-                    'Gold' => '#C89947',
-                    'Silver' => '#D1D3D2',
-                    'Beige' => '#F5F5DC',
-                    'Brown' => '#7E4124'
-                ];
-                $color_value = isset($color_map[$option]) ? $color_map[$option] : '#000000';
+            <?php 
+            foreach ($options as $option) : 
+                // Get the term object for the color option
+                $term = get_term_by('slug', sanitize_title($option), 'pa_' . strtolower($attribute_name));
+                // Retrieve the hex code from term meta (Variation Swatches for WooCommerce - Pro)
+                $color_value = $term ? get_term_meta($term->term_id, 'viwpvs_attribute_color', true) : '#000000';
+                // Fallback to black if no hex code is found
+                if (empty($color_value)) {
+                    $color_value = '#000000';
+                }
             ?>
                 <span class="swatchly_swatch swatchly_color_swatch" 
                       data-value="<?php echo esc_attr($option); ?>" 
@@ -566,3 +562,4 @@ function change_posts_per_page($query) {
         return;
     $query->set('posts_per_page', 16);
 }
+?>
