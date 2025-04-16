@@ -2,7 +2,7 @@
 /*
 Plugin Name: Custom Shortcode Swatches
 Description: Adds color and size swatches for WooCommerce variable products with shortcodes [swatchly_color_swatches] and [swatchly_size_swatches].
-Version: 1.0.5
+Version: 1.0.7
 Author: Lucuma Agency
 Author URI: https://lucumaagency.com/
 License: GPL-2.0+
@@ -391,23 +391,39 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                     let $wrapper = $(this);
                     let productId = $wrapper.data('product_id');
                     let variations = JSON.parse($wrapper.find('.swatchly_color_swatches').attr('data-variations') || '[]');
-                    let $imageElement = $wrapper.closest('.e-con-inner').find('.elementor-element-0515b16 img');
                     let $colorInput = $('#attribute_pa_colors_' + productId);
                     let featuredImage = '<?php echo esc_js($featured_image_url); ?>';
                     let currentImage = featuredImage;
 
+                    // Find the closest product container and its image
+                    let $productContainer = $wrapper.closest('.product, .post, .type-product');
+                    let $imageElement = $productContainer.find('.elementor-element-0515b16 img.wvs-archive-product-image');
+
+                    // Fallback selectors if primary fails
                     if (!$imageElement.length) {
-                        console.log('Image element not found for product ID ' + productId);
+                        console.warn('Primary image selector failed for product ID ' + productId);
+                        $imageElement = $productContainer.find('.wp-post-image');
+                        if (!$imageElement.length) {
+                            $imageElement = $productContainer.find('.woocommerce-product-gallery__image img');
+                        }
+                        if (!$imageElement.length) {
+                            console.error('No image element found for product ID ' + productId);
+                        } else {
+                            console.log('Fallback image element found for product ID ' + productId, $imageElement);
+                        }
                     } else {
                         console.log('Image element found for product ID ' + productId, $imageElement);
                     }
+
+                    // Log variations for debugging
+                    console.log('Variations for product ID ' + productId, variations);
 
                     $wrapper.find('.swatchly_color_swatch').on('mouseenter', function() {
                         let selectedColor = String($(this).data('value') || '');
                         let selectedSize = String($('#attribute_Size_' + productId).val() || '');
                         let matchedVariation = null;
 
-                        console.log('Hover on color:', selectedColor, 'Product ID:', productId);
+                        console.log('Hover on color:', selectedColor, 'Product ID:', productId, 'Selected Size:', selectedSize);
 
                         $.each(variations, function(index, variation) {
                             let colorAttr = String(variation.attributes['attribute_pa_colors'] || '');
@@ -420,16 +436,25 @@ add_shortcode('swatchly_size_swatches', function($atts) {
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             currentImage = matchedVariation.image.src;
-                            $imageElement.attr('src', currentImage).attr('srcset', '');
-                            console.log('Image updated to:', currentImage, 'Product ID:', productId);
+                            if ($imageElement.length) {
+                                $imageElement.attr('src', currentImage).attr('srcset', '');
+                                console.log('Image updated to:', currentImage, 'for product ID:', productId);
+                            } else {
+                                console.error('Image element not available to update for product ID:', productId);
+                            }
                         } else {
-                            console.log('No matching variation found for color:', selectedColor, 'Product ID:', productId);
+                            console.log('No matching variation or image found for color:', selectedColor, 'Product ID:', productId, 'Variation:', matchedVariation);
+                            if ($imageElement.length) {
+                                $imageElement.attr('src', featuredImage).attr('srcset', '');
+                            }
                         }
                     });
 
                     $wrapper.on('mouseleave', '.swatchly_color_swatches', function() {
-                        console.log('Color mouseleave, persisting image:', currentImage, 'Product ID:', productId);
-                        $imageElement.attr('src', currentImage).attr('srcset', '');
+                        console.log('Color mouseleave, restoring image:', currentImage, 'Product ID:', productId);
+                        if ($imageElement.length) {
+                            $imageElement.attr('src', currentImage).attr('srcset', '');
+                        }
                     });
 
                     $wrapper.find('.swatchly_color_swatch').on('click', function(e) {
@@ -453,7 +478,10 @@ add_shortcode('swatchly_size_swatches', function($atts) {
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             currentImage = matchedVariation.image.src;
-                            $imageElement.attr('src', currentImage).attr('srcset', '');
+                            if ($imageElement.length) {
+                                $imageElement.attr('src', currentImage).attr('srcset', '');
+                                console.log('Image updated on click to:', currentImage, 'for product ID:', productId);
+                            }
                         }
 
                         updateAvailability(productId, selectedColor, null, variations);
@@ -466,13 +494,26 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                     let $wrapper = $(this);
                     let productId = $wrapper.data('product_id');
                     let variations = JSON.parse($wrapper.find('.swatchly_size_swatches').attr('data-variations') || '[]');
-                    let $imageElement = $wrapper.closest('.e-con-inner').find('.elementor-element-0515b16 img');
                     let $sizeInput = $('#attribute_Size_' + productId);
                     let featuredImage = '<?php echo esc_js($featured_image_url); ?>';
                     let currentImage = featuredImage;
 
+                    // Find the closest product container and its image
+                    let $productContainer = $wrapper.closest('.product, .post, .type-product');
+                    let $imageElement = $productContainer.find('.elementor-element-0515b16 img.wvs-archive-product-image');
+
+                    // Fallback selectors if primary fails
                     if (!$imageElement.length) {
-                        console.log('Image element not found for product ID ' + productId);
+                        console.warn('Primary image selector failed for product ID ' + productId);
+                        $imageElement = $productContainer.find('.wp-post-image');
+                        if (!$imageElement.length) {
+                            $imageElement = $productContainer.find('.woocommerce-product-gallery__image img');
+                        }
+                        if (!$imageElement.length) {
+                            console.error('No image element found for product ID ' + productId);
+                        } else {
+                            console.log('Fallback image element found for product ID ' + productId, $imageElement);
+                        }
                     } else {
                         console.log('Image element found for product ID ' + productId, $imageElement);
                     }
@@ -482,7 +523,7 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                         let selectedColor = String($('#attribute_pa_colors_' + productId).val() || '');
                         let matchedVariation = null;
 
-                        console.log('Hover on size:', selectedSize, 'Product ID:', productId);
+                        console.log('Hover on size:', selectedSize, 'Product ID:', productId, 'Selected Color:', selectedColor);
 
                         $.each(variations, function(index, variation) {
                             let sizeAttr = String(variation.attributes['attribute_size'] || '');
@@ -495,16 +536,25 @@ add_shortcode('swatchly_size_swatches', function($atts) {
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             currentImage = matchedVariation.image.src;
-                            $imageElement.attr('src', currentImage).attr('srcset', '');
-                            console.log('Image updated to:', currentImage, 'Product ID:', productId);
+                            if ($imageElement.length) {
+                                $imageElement.attr('src', currentImage).attr('srcset', '');
+                                console.log('Image updated to:', currentImage, 'for product ID:', productId);
+                            } else {
+                                console.error('Image element not available to update for product ID:', productId);
+                            }
                         } else {
-                            console.log('No matching variation found for size:', selectedSize, 'Product ID:', productId);
+                            console.log('No matching variation or image found for size:', selectedSize, 'Product ID:', productId, 'Variation:', matchedVariation);
+                            if ($imageElement.length) {
+                                $imageElement.attr('src', featuredImage).attr('srcset', '');
+                            }
                         }
                     });
 
                     $wrapper.on('mouseleave', '.swatchly_size_swatches', function() {
-                        console.log('Size mouseleave, persisting image:', currentImage, 'Product ID:', productId);
-                        $imageElement.attr('src', currentImage).attr('srcset', '');
+                        console.log('Size mouseleave, restoring image:', currentImage, 'Product ID:', productId);
+                        if ($imageElement.length) {
+                            $imageElement.attr('src', currentImage).attr('srcset', '');
+                        }
                     });
 
                     $wrapper.find('.swatchly_size_swatch').on('click', function(e) {
@@ -528,7 +578,10 @@ add_shortcode('swatchly_size_swatches', function($atts) {
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             currentImage = matchedVariation.image.src;
-                            $imageElement.attr('src', currentImage).attr('srcset', '');
+                            if ($imageElement.length) {
+                                $imageElement.attr('src', currentImage).attr('srcset', '');
+                                console.log('Image updated on click to:', currentImage, 'for product ID:', productId);
+                            }
                         }
 
                         updateAvailability(productId, null, selectedSize, variations);
