@@ -2,7 +2,7 @@
 /*
 Plugin Name: Custom Shortcode Swatches
 Description: Adds color and size swatches for WooCommerce variable products.
-Version: 1.0.19
+Version: 1.0.25
 Author: Lucuma Agency
 License: GPL-2.0+
 */
@@ -199,6 +199,19 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                     return matchedVariation;
                 }
 
+                function findVariationForHover(productId, attribute, value, variations) {
+                    let matchedVariation = null;
+                    $.each(variations, function(index, variation) {
+                        let attrValue = String(variation.attributes[attribute] || '');
+                        if (attrValue === value) {
+                            matchedVariation = variation;
+                            return false;
+                        }
+                    });
+                    console.log('Swatchly: Finding variation for hover for product ID ' + productId, { attribute, value, matchedVariation });
+                    return matchedVariation;
+                }
+
                 function updateAvailability(productId, selectedColor, selectedSize, variations) {
                     let $colorSwatches = $('.swatchly_color_swatches[data-product_id="' + productId + '"] .swatchly_color_swatch');
                     let $sizeSwatches = $('.swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch');
@@ -243,24 +256,17 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                     let productId = $wrapper.data('product_id');
                     let variations = JSON.parse($wrapper.find('.swatchly_color_swatches').attr('data-variations') || '[]');
                     let $colorInput = $('#attribute_pa_color_' + productId + ', #attribute_Color_' + productId);
-                    let $imageElement = $wrapper.closest('.e-con-inner, .product, .post, .type-product, .woocommerce-product-gallery').find('img.wvs-archive-product-image, .wp-post-image, .woocommerce-product-gallery__image img, .attachment-woocommerce_thumbnail, .woocommerce-product-gallery img, img[class*="wp-image-"], img');
+                    let $productContainer = $wrapper.closest('.e-loop-item-' + productId + ', .post-' + productId + ', .product');
+                    let $imageElement = $productContainer.find('.wvs-archive-product-image, .attachment-large');
                     let featuredImage = '<?php echo esc_js($featured_image_url); ?>';
                     let currentImage = featuredImage;
 
-                    console.log('Swatchly: Image selector for product ID ' + productId, { found: $imageElement.length, selectors: $imageElement.length ? $imageElement.attr('class') : 'none' });
+                    console.log('Swatchly: Image selector for product ID ' + productId, { found: $imageElement.length, selectors: $imageElement.length ? $imageElement.map(function() { return $(this).attr('class') }).get().join(', ') : 'none' });
 
                     $wrapper.find('.swatchly_color_swatch').on('mouseenter', function() {
                         let selectedColor = String($(this).data('value') || '');
-                        let selectedSize = String($('#attribute_Size_' + productId + ', #attribute_pa_size_' + productId).val() || '');
-                        let matchedVariation = null;
-                        $.each(variations, function(index, variation) {
-                            let colorAttr = String(variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'] || '');
-                            let sizeAttr = String(variation.attributes['attribute_size'] || variation.attributes['attribute_pa_size'] || '');
-                            if (colorAttr === selectedColor && (!selectedSize || sizeAttr === selectedSize)) {
-                                matchedVariation = variation;
-                                return false;
-                            }
-                        });
+                        let attribute = $colorInput.attr('id').includes('pa_color') ? 'attribute_pa_color' : 'attribute_color';
+                        let matchedVariation = findVariationForHover(productId, attribute, selectedColor, variations);
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             currentImage = matchedVariation.image.src;
                             $imageElement.each(function() {
@@ -268,14 +274,8 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                             });
                             console.log('Swatchly: Image updated on color hover for product ID ' + productId, { newImage: currentImage });
                         } else {
-                            console.log('Swatchly: No image found for color hover for product ID ' + productId, { selectedColor, selectedSize });
+                            console.log('Swatchly: No image found for color hover for product ID ' + productId, { selectedColor, attribute, variationsCount: variations.length });
                         }
-                    });
-
-                    $wrapper.on('mouseleave', '.swatchly_color_swatches', function() {
-                        $imageElement.each(function() {
-                            $(this).attr('src', currentImage).attr('srcset', '');
-                        });
                     });
 
                     $wrapper.find('.swatchly_color_swatch').on('click', function(e) {
@@ -285,7 +285,8 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                         $(this).addClass('selected');
                         $colorInput.val(selectedColor);
 
-                        let selectedSize = String($('#attribute_Size_' + productId + ', #attribute_pa_size_' + productId).val() || '');
+                        let $sizeInput = $('#attribute_Size_' + productId + ', #attribute_pa_size_' + productId);
+                        let selectedSize = String($sizeInput.val() || '');
                         let matchedVariation = findVariation(productId, selectedColor, selectedSize, variations);
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
@@ -300,7 +301,7 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                         if (selectedSize && matchedVariation && matchedVariation.is_in_stock) {
                             let attributes = { 
                                 ['attribute_' + ($colorInput.attr('id').includes('pa_color') ? 'pa_color' : 'color')]: selectedColor, 
-                                ['attribute_' + ($sizeInput && $sizeInput.attr('id').includes('pa_size') ? 'pa_size' : 'size')]: selectedSize 
+                                ['attribute_' + ($sizeInput.attr('id').includes('pa_size') ? 'pa_size' : 'size')]: selectedSize 
                             };
                             addToCart(productId, matchedVariation.variation_id, attributes);
                         }
@@ -312,24 +313,17 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                     let productId = $wrapper.data('product_id');
                     let variations = JSON.parse($wrapper.find('.swatchly_size_swatches').attr('data-variations') || '[]');
                     let $sizeInput = $('#attribute_Size_' + productId + ', #attribute_pa_size_' + productId);
-                    let $imageElement = $wrapper.closest('.e-con-inner, .product, .post, .type-product, .woocommerce-product-gallery').find('img.wvs-archive-product-image, .wp-post-image, .woocommerce-product-gallery__image img, .attachment-woocommerce_thumbnail, .woocommerce-product-gallery img, img[class*="wp-image-"], img');
+                    let $productContainer = $wrapper.closest('.e-loop-item-' + productId + ', .post-' + productId + ', .product');
+                    let $imageElement = $productContainer.find('.wvs-archive-product-image, .attachment-large');
                     let featuredImage = '<?php echo esc_js($featured_image_url); ?>';
                     let currentImage = featuredImage;
 
-                    console.log('Swatchly: Image selector for product ID ' + productId, { found: $imageElement.length, selectors: $imageElement.length ? $imageElement.attr('class') : 'none' });
+                    console.log('Swatchly: Image selector for product ID ' + productId, { found: $imageElement.length, selectors: $imageElement.length ? $imageElement.map(function() { return $(this).attr('class') }).get().join(', ') : 'none' });
 
                     $wrapper.find('.swatchly_size_swatch').on('mouseenter', function() {
                         let selectedSize = String($(this).data('value') || '');
-                        let selectedColor = String($('#attribute_pa_color_' + productId + ', #attribute_Color_' + productId).val() || '');
-                        let matchedVariation = null;
-                        $.each(variations, function(index, variation) {
-                            let sizeAttr = String(variation.attributes['attribute_size'] || variation.attributes['attribute_pa_size'] || '');
-                            let colorAttr = String(variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'] || '');
-                            if (sizeAttr === selectedSize && (!selectedColor || colorAttr === selectedColor)) {
-                                matchedVariation = variation;
-                                return false;
-                            }
-                        });
+                        let attribute = $sizeInput.attr('id').includes('pa_size') ? 'attribute_pa_size' : 'attribute_size';
+                        let matchedVariation = findVariationForHover(productId, attribute, selectedSize, variations);
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
                             currentImage = matchedVariation.image.src;
                             $imageElement.each(function() {
@@ -337,14 +331,8 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                             });
                             console.log('Swatchly: Image updated on size hover for product ID ' + productId, { newImage: currentImage });
                         } else {
-                            console.log('Swatchly: No image found for size hover for product ID ' + productId, { selectedSize, selectedColor });
+                            console.log('Swatchly: No image found for size hover for product ID ' + productId, { selectedSize, attribute, variationsCount: variations.length });
                         }
-                    });
-
-                    $wrapper.on('mouseleave', '.swatchly_size_swatches', function() {
-                        $imageElement.each(function() {
-                            $(this).attr('src', currentImage).attr('srcset', '');
-                        });
                     });
 
                     $wrapper.find('.swatchly_size_swatch').on('click', function(e) {
@@ -354,7 +342,8 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                         $(this).addClass('selected');
                         $sizeInput.val(selectedSize);
 
-                        let selectedColor = String($('#attribute_pa_color_' + productId + ', #attribute_Color_' + productId).val() || '');
+                        let $colorInput = $('#attribute_pa_color_' + productId + ', #attribute_Color_' + productId);
+                        let selectedColor = String($colorInput.val() || '');
                         let matchedVariation = findVariation(productId, selectedColor, selectedSize, variations);
 
                         if (matchedVariation && matchedVariation.image && matchedVariation.image.src) {
@@ -369,7 +358,7 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                         if (selectedColor && matchedVariation && matchedVariation.is_in_stock) {
                             let attributes = { 
                                 ['attribute_' + ($colorInput.attr('id').includes('pa_color') ? 'pa_color' : 'color')]: selectedColor, 
-                                ['attribute_' + ($sizeInput && $sizeInput.attr('id').includes('pa_size') ? 'pa_size' : 'size')]: selectedSize 
+                                ['attribute_' + ($sizeInput.attr('id').includes('pa_size') ? 'pa_size' : 'size')]: selectedSize 
                             };
                             addToCart(productId, matchedVariation.variation_id, attributes);
                         }
