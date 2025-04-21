@@ -2,7 +2,7 @@
 /*
 Plugin Name: Custom Shortcode Swatches
 Description: Adds color and size swatches for WooCommerce variable products.
-Version: 1.0.31
+Version: 1.0.35
 Author: Lucuma Agency
 License: GPL-2.0+
 */
@@ -211,29 +211,52 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                 function updateAvailability(productId, selectedColor, selectedSize, variations) {
                     console.log('Swatchly: updateAvailability called', { productId: productId, selectedSize: selectedSize, selectedColor: selectedColor });
                     console.log('Swatchly: Variations data', { productId: productId, variations: variations });
+                    if (variations.length > 0) {
+                        console.log('Swatchly: Variation attributes', { productId: productId, attributes: Object.keys(variations[0].attributes) });
+                    }
                     let $colorSwatches = $('.swatchly-color-swatches-wrapper[data-product_id="' + productId + '"] .swatchly_color_swatch, .swatchly_color_swatches[data-product_id="' + productId + '"] .swatchly_color_swatch');
-                    let $sizeSwatches = $('.swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch');
+                    let $sizeSwatches = $('.swatchly-size-swatches-wrapper[data-product_id="' + productId + '"] .swatchly_size_swatch, .swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch');
                     console.log('Swatchly: Color swatches selector', { 
                         productId: productId, 
                         selector: '.swatchly-color-swatches-wrapper[data-product_id="' + productId + '"] .swatchly_color_swatch, .swatchly_color_swatches[data-product_id="' + productId + '"] .swatchly_color_swatch', 
                         count: $colorSwatches.length,
                         wrapperCount: $('.swatchly-color-swatches-wrapper[data-product_id="' + productId + '"]').length
                     });
+                    console.log('Swatchly: Size swatches selector', { 
+                        productId: productId, 
+                        selector: '.swatchly-size-swatches-wrapper[data-product_id="' + productId + '"] .swatchly_size_swatch, .swatchly_size_swatches[data-product_id="' + productId + '"] .swatchly_size_swatch', 
+                        count: $sizeSwatches.length,
+                        wrapperCount: $('.swatchly-size-swatches-wrapper[data-product_id="' + productId + '"]').length
+                    });
+
+                    // Reset out-of-stock classes for both swatches
+                    $colorSwatches.removeClass('out-of-stock');
+                    $sizeSwatches.removeClass('out-of-stock');
+                    console.log('Swatchly: Out-of-stock classes reset', { productId: productId });
 
                     // Update size swatches availability when a color is selected
                     if (selectedColor) {
                         $sizeSwatches.each(function() {
                             let sizeValue = String($(this).data('value') || '');
                             let isAvailable = false;
+                            let variationFound = null;
                             $.each(variations, function(index, variation) {
                                 let sizeAttr = String(variation.attributes['attribute_size'] || variation.attributes['attribute_pa_size'] || '');
                                 let colorAttr = String(variation.attributes['attribute_pa_color'] || variation.attributes['attribute_color'] || '');
                                 if (colorAttr === selectedColor && sizeAttr === sizeValue && variation.is_in_stock) {
                                     isAvailable = true;
+                                    variationFound = variation;
                                     return false;
                                 }
                             });
                             $(this).toggleClass('out-of-stock', !isAvailable);
+                            console.log('Swatchly: Size stock status', {
+                                productId: productId,
+                                color: selectedColor,
+                                size: sizeValue,
+                                inStock: isAvailable,
+                                variation: variationFound
+                            });
                         });
                     }
 
@@ -254,7 +277,7 @@ add_shortcode('swatchly_size_swatches', function($atts) {
                                 }
                             });
                             $(this).toggleClass('out-of-stock', !isAvailable);
-                            console.log('Swatchly: Stock status', {
+                            console.log('Swatchly: Color stock status', {
                                 productId: productId,
                                 size: selectedSize,
                                 color: colorValue,
